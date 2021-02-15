@@ -9,6 +9,7 @@ using Jellyfin.Data.Enums;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Audio;
+using MediaBrowser.Controller.Events.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Controller.Resolvers;
 using MediaBrowser.Controller.Sorting;
@@ -229,17 +230,17 @@ namespace MediaBrowser.Controller.Library
         /// <summary>
         /// Occurs when [item added].
         /// </summary>
-        event EventHandler<ItemChangeEventArgs> ItemAdded;
+        event EventHandler<ItemChangedEventArgs> ItemAdded;
 
         /// <summary>
         /// Occurs when [item updated].
         /// </summary>
-        event EventHandler<ItemChangeEventArgs> ItemUpdated;
+        event EventHandler<ItemChangedEventArgs> ItemUpdated;
 
         /// <summary>
         /// Occurs when [item removed].
         /// </summary>
-        event EventHandler<ItemChangeEventArgs> ItemRemoved;
+        event EventHandler<ItemChangedEventArgs> ItemRemoved;
 
         /// <summary>
         /// Finds the type of the collection.

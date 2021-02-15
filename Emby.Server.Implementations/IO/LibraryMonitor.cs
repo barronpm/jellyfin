@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Emby.Server.Implementations.Library;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Events.Library;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.IO;
 using Microsoft.Extensions.Logging;
@@ -168,8 +169,8 @@ namespace Emby.Server.Implementations.IO
         /// Handles the ItemRemoved event of the LibraryManager control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangeEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryManagerItemRemoved(object sender, ItemChangeEventArgs e)
+        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
+        private void OnLibraryManagerItemRemoved(object sender, ItemChangedEventArgs e)
         {
             if (e.Parent is AggregateFolder)
             {
@@ -181,8 +182,8 @@ namespace Emby.Server.Implementations.IO
         /// Handles the ItemAdded event of the LibraryManager control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangeEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryManagerItemAdded(object sender, ItemChangeEventArgs e)
+        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
+        private void OnLibraryManagerItemAdded(object sender, ItemChangedEventArgs e)
         {
             if (e.Parent is AggregateFolder)
             {

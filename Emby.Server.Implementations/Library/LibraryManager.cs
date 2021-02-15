@@ -27,6 +27,7 @@ using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Audio;
+using MediaBrowser.Controller.Events.Library;
 using MediaBrowser.Controller.IO;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.LiveTv;
@@ -151,17 +152,17 @@ namespace Emby.Server.Implementations.Library
         /// <summary>
         /// Occurs when [item added].
         /// </summary>
-        public event EventHandler<ItemChangeEventArgs> ItemAdded;
+        public event EventHandler<ItemChangedEventArgs> ItemAdded;
 
         /// <summary>
         /// Occurs when [item updated].
         /// </summary>
-        public event EventHandler<ItemChangeEventArgs> ItemUpdated;
+        public event EventHandler<ItemChangedEventArgs> ItemUpdated;
 
         /// <summary>
         /// Occurs when [item removed].
         /// </summary>
-        public event EventHandler<ItemChangeEventArgs> ItemRemoved;
+        public event EventHandler<ItemChangedEventArgs> ItemRemoved;
 
         /// <summary>
         /// Gets the root folder.
@@ -1849,7 +1850,7 @@ namespace Emby.Server.Implementations.Library
                     {
                         ItemAdded(
                             this,
-                            new ItemChangeEventArgs
+                            new ItemChangedEventArgs
                             {
                                 Item = item,
                                 Parent = parent ?? item.GetParent()
@@ -1986,7 +1987,7 @@ namespace Emby.Server.Implementations.Library
                     {
                         ItemUpdated(
                             this,
-                            new ItemChangeEventArgs
+                            new ItemChangedEventArgs
                             {
                                 Item = item,
                                 Parent = parent,
@@ -2030,7 +2031,7 @@ namespace Emby.Server.Implementations.Library
                 {
                     ItemRemoved(
                         this,
-                        new ItemChangeEventArgs
+                        new ItemChangedEventArgs
                         {
                             Item = item,
                             Parent = parent

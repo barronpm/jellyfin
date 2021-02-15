@@ -12,6 +12,7 @@ using Jellyfin.Data.Events;
 using MediaBrowser.Controller.Channels;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Audio;
+using MediaBrowser.Controller.Events.Library;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Providers;
@@ -179,8 +180,8 @@ namespace Emby.Server.Implementations.EntryPoints
         /// Handles the ItemAdded event of the libraryManager control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangeEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryItemAdded(object sender, ItemChangeEventArgs e)
+        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
+        private void OnLibraryItemAdded(object sender, ItemChangedEventArgs e)
         {
             if (!FilterItem(e.Item))
             {
@@ -215,8 +216,8 @@ namespace Emby.Server.Implementations.EntryPoints
         /// Handles the ItemUpdated event of the libraryManager control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangeEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryItemUpdated(object sender, ItemChangeEventArgs e)
+        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
+        private void OnLibraryItemUpdated(object sender, ItemChangedEventArgs e)
         {
             if (!FilterItem(e.Item))
             {
@@ -242,8 +243,8 @@ namespace Emby.Server.Implementations.EntryPoints
         /// Handles the ItemRemoved event of the libraryManager control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangeEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryItemRemoved(object sender, ItemChangeEventArgs e)
+        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
+        private void OnLibraryItemRemoved(object sender, ItemChangedEventArgs e)
         {
             if (!FilterItem(e.Item))
             {

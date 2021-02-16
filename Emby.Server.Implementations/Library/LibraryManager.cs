@@ -48,6 +48,7 @@ using MediaBrowser.Model.Tasks;
 using MediaBrowser.Providers.MediaInfo;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Rebus.Bus;
 using Episode = MediaBrowser.Controller.Entities.TV.Episode;
 using Genre = MediaBrowser.Controller.Entities.Genre;
 using Person = MediaBrowser.Controller.Entities.Person;
@@ -63,6 +64,7 @@ namespace Emby.Server.Implementations.Library
         private const string ShortcutFileExtension = ".mblink";
 
         private readonly ILogger<LibraryManager> _logger;
+        private readonly IBus _eventBus;
         private readonly IMemoryCache _memoryCache;
         private readonly ITaskManager _taskManager;
         private readonly IUserManager _userManager;
@@ -101,6 +103,7 @@ namespace Emby.Server.Implementations.Library
         /// </summary>
         /// <param name="appHost">The application host.</param>
         /// <param name="logger">The logger.</param>
+        /// <param name="eventBus">The event bus.</param>
         /// <param name="taskManager">The task manager.</param>
         /// <param name="userManager">The user manager.</param>
         /// <param name="configurationManager">The configuration manager.</param>
@@ -116,6 +119,7 @@ namespace Emby.Server.Implementations.Library
         public LibraryManager(
             IServerApplicationHost appHost,
             ILogger<LibraryManager> logger,
+            IBus eventBus,
             ITaskManager taskManager,
             IUserManager userManager,
             IServerConfigurationManager configurationManager,
@@ -131,6 +135,7 @@ namespace Emby.Server.Implementations.Library
         {
             _appHost = appHost;
             _logger = logger;
+            _eventBus = eventBus;
             _taskManager = taskManager;
             _userManager = userManager;
             _configurationManager = configurationManager;
@@ -148,11 +153,6 @@ namespace Emby.Server.Implementations.Library
 
             RecordConfigurationValues(configurationManager.Configuration);
         }
-
-        /// <summary>
-        /// Occurs when [item added].
-        /// </summary>
-        public event EventHandler<ItemChangedEventArgs> ItemAdded;
 
         /// <summary>
         /// Occurs when [item updated].
@@ -1821,13 +1821,8 @@ namespace Emby.Server.Implementations.Library
             CreateItems(new[] { item }, parent, CancellationToken.None);
         }
 
-        /// <summary>
-        /// Creates the items.
-        /// </summary>
-        /// <param name="items">The items.</param>
-        /// <param name="parent">The parent item.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        public void CreateItems(IReadOnlyList<BaseItem> items, BaseItem parent, CancellationToken cancellationToken)
+        /// <inheritdoc />
+        public async Task CreateItems(IReadOnlyList<BaseItem> items, BaseItem parent, CancellationToken cancellationToken)
         {
             _itemRepository.SaveItems(items, cancellationToken);
 
@@ -1836,31 +1831,19 @@ namespace Emby.Server.Implementations.Library
                 RegisterItem(item);
             }
 
-            if (ItemAdded != null)
+            foreach (var item in items)
             {
-                foreach (var item in items)
+                // With the live tv guide this just creates too much noise
+                if (item.SourceType != SourceType.Library)
                 {
-                    // With the live tv guide this just creates too much noise
-                    if (item.SourceType != SourceType.Library)
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        ItemAdded(
-                            this,
-                            new ItemChangedEventArgs
-                            {
-                                Item = item,
-                                Parent = parent ?? item.GetParent()
-                            });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error in ItemAdded event handler");
-                    }
+                    continue;
                 }
+
+                await _eventBus.Send(new ItemAddedEventArgs
+                {
+                    Item = item,
+                    Parent = parent ?? item.GetParent()
+                }).ConfigureAwait(false);
             }
         }
 

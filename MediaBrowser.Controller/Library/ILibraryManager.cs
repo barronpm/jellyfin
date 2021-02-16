@@ -202,7 +202,11 @@ namespace MediaBrowser.Controller.Library
         /// <summary>
         /// Creates the items.
         /// </summary>
-        void CreateItems(IReadOnlyList<BaseItem> items, BaseItem parent, CancellationToken cancellationToken);
+        /// <param name="items">The items.</param>
+        /// <param name="parent">The parent.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the creation of the provided items.</returns>
+        Task CreateItems(IReadOnlyList<BaseItem> items, BaseItem parent, CancellationToken cancellationToken);
 
         /// <summary>
         /// Updates the item.
@@ -226,11 +230,6 @@ namespace MediaBrowser.Controller.Library
         BaseItem RetrieveItem(Guid id);
 
         bool IsScanRunning { get; }
-
-        /// <summary>
-        /// Occurs when [item added].
-        /// </summary>
-        event EventHandler<ItemChangedEventArgs> ItemAdded;
 
         /// <summary>
         /// Occurs when [item updated].

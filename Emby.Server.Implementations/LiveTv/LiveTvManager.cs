@@ -1216,7 +1216,7 @@ namespace Emby.Server.Implementations.LiveTv
 
                     if (newPrograms.Count > 0)
                     {
-                        _libraryManager.CreateItems(newPrograms, null, cancellationToken);
+                        await _libraryManager.CreateItems(newPrograms, null, cancellationToken).ConfigureAwait(false);
                     }
 
                     if (updatedPrograms.Count > 0)

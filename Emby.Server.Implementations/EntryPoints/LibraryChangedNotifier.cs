@@ -20,10 +20,11 @@ using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Session;
 using Microsoft.Extensions.Logging;
+using Rebus.Handlers;
 
 namespace Emby.Server.Implementations.EntryPoints
 {
-    public class LibraryChangedNotifier : IServerEntryPoint
+    public class LibraryChangedNotifier : IServerEntryPoint, IHandleMessages<ItemAddedEventArgs>
     {
         /// <summary>
         /// The library update duration.
@@ -70,13 +71,46 @@ namespace Emby.Server.Implementations.EntryPoints
 
         public Task RunAsync()
         {
-            _libraryManager.ItemAdded += OnLibraryItemAdded;
             _libraryManager.ItemUpdated += OnLibraryItemUpdated;
             _libraryManager.ItemRemoved += OnLibraryItemRemoved;
 
             _providerManager.RefreshCompleted += OnProviderRefreshCompleted;
             _providerManager.RefreshStarted += OnProviderRefreshStarted;
             _providerManager.RefreshProgress += OnProviderRefreshProgress;
+
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc />
+        public Task Handle(ItemAddedEventArgs e)
+        {
+            if (!FilterItem(e.Item))
+            {
+                return Task.CompletedTask;
+            }
+
+            lock (_libraryChangedSyncLock)
+            {
+                if (LibraryUpdateTimer == null)
+                {
+                    LibraryUpdateTimer = new Timer(
+                        LibraryUpdateTimerCallback,
+                        null,
+                        LibraryUpdateDuration,
+                        Timeout.Infinite);
+                }
+                else
+                {
+                    LibraryUpdateTimer.Change(LibraryUpdateDuration, Timeout.Infinite);
+                }
+
+                if (e.Item.GetParent() is Folder parent)
+                {
+                    _foldersAddedTo.Add(parent);
+                }
+
+                _itemsAdded.Add(e.Item);
+            }
 
             return Task.CompletedTask;
         }
@@ -174,42 +208,6 @@ namespace Emby.Server.Implementations.EntryPoints
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Handles the ItemAdded event of the libraryManager control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryItemAdded(object sender, ItemChangedEventArgs e)
-        {
-            if (!FilterItem(e.Item))
-            {
-                return;
-            }
-
-            lock (_libraryChangedSyncLock)
-            {
-                if (LibraryUpdateTimer == null)
-                {
-                    LibraryUpdateTimer = new Timer(
-                        LibraryUpdateTimerCallback,
-                        null,
-                        LibraryUpdateDuration,
-                        Timeout.Infinite);
-                }
-                else
-                {
-                    LibraryUpdateTimer.Change(LibraryUpdateDuration, Timeout.Infinite);
-                }
-
-                if (e.Item.GetParent() is Folder parent)
-                {
-                    _foldersAddedTo.Add(parent);
-                }
-
-                _itemsAdded.Add(e.Item);
-            }
         }
 
         /// <summary>
@@ -480,7 +478,6 @@ namespace Emby.Server.Implementations.EntryPoints
                     LibraryUpdateTimer = null;
                 }
 
-                _libraryManager.ItemAdded -= OnLibraryItemAdded;
                 _libraryManager.ItemUpdated -= OnLibraryItemUpdated;
                 _libraryManager.ItemRemoved -= OnLibraryItemRemoved;
 

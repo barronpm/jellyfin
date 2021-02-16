@@ -1,11 +1,26 @@
 #pragma warning disable CS1591
 
 using System;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Model.Configuration;
 
 namespace MediaBrowser.Controller.Library
 {
     public interface ILibraryMonitor : IDisposable
     {
+        /// <summary>
+        /// Gets a value indicating whether or not monitoring is running.
+        /// </summary>
+        bool IsRunning { get; }
+
+        /// <summary>
+        /// Checks whether the provided item is monitored.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <param name="options">The library options.</param>
+        /// <returns>Returns a value indicating whether the provided item is monitored on disk.</returns>
+        bool IsMonitoringEnabled(BaseItem item, LibraryOptions options);
+
         /// <summary>
         /// Starts this instance.
         /// </summary>
@@ -36,10 +51,9 @@ namespace MediaBrowser.Controller.Library
         void ReportFileSystemChanged(string path);
 
         /// <summary>
-        /// Determines whether [is path locked] [the specified path].
+        /// Starts the watching path.
         /// </summary>
         /// <param name="path">The path.</param>
-        /// <returns><c>true</c> if [is path locked] [the specified path]; otherwise, <c>false</c>.</returns>
-        bool IsPathLocked(string path);
+        void StartWatchingPath(string path);
     }
 }

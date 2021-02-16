@@ -11,6 +11,7 @@ using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Events.Library;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.IO;
 using Microsoft.Extensions.Logging;
 
@@ -26,17 +27,17 @@ namespace Emby.Server.Implementations.IO
         /// <summary>
         /// The file system watchers.
         /// </summary>
-        private readonly ConcurrentDictionary<string, FileSystemWatcher> _fileSystemWatchers = new ConcurrentDictionary<string, FileSystemWatcher>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, FileSystemWatcher> _fileSystemWatchers = new (StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// The affected paths.
         /// </summary>
-        private readonly List<FileRefresher> _activeRefreshers = new List<FileRefresher>();
+        private readonly List<FileRefresher> _activeRefreshers = new ();
 
         /// <summary>
         /// A dynamic list of paths that should be ignored.  Added to during our own file system modifications.
         /// </summary>
-        private readonly ConcurrentDictionary<string, string> _tempIgnoredPaths = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, string> _tempIgnoredPaths = new (StringComparer.OrdinalIgnoreCase);
 
         private bool _disposed = false;
 
@@ -49,6 +50,7 @@ namespace Emby.Server.Implementations.IO
             _tempIgnoredPaths[path] = path;
         }
 
+        /// <inheritdoc />
         public void ReportFileSystemChangeBeginning(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -59,14 +61,7 @@ namespace Emby.Server.Implementations.IO
             TemporarilyIgnore(path);
         }
 
-        public bool IsPathLocked(string path)
-        {
-            // This method is not used by the core but it used by auto-organize
-
-            var lockedPaths = _tempIgnoredPaths.Keys.ToList();
-            return lockedPaths.Any(i => _fileSystem.AreEqual(i, path) || _fileSystem.ContainsSubPath(i, path));
-        }
-
+        /// <inheritdoc />
         public async void ReportFileSystemChangeComplete(string path, bool refreshPath)
         {
             if (string.IsNullOrEmpty(path))
@@ -109,14 +104,16 @@ namespace Emby.Server.Implementations.IO
             _fileSystem = fileSystem;
         }
 
-        private bool IsLibraryMonitorEnabled(BaseItem item)
+        /// <inheritdoc />
+        public bool IsRunning { get; private set; }
+
+        /// <inheritdoc />
+        public bool IsMonitoringEnabled(BaseItem item, LibraryOptions options)
         {
             if (item is BasePluginFolder)
             {
                 return false;
             }
-
-            var options = _libraryManager.GetLibraryOptions(item);
 
             if (options != null)
             {
@@ -128,7 +125,6 @@ namespace Emby.Server.Implementations.IO
 
         public void Start()
         {
-            _libraryManager.ItemAdded += OnLibraryManagerItemAdded;
             _libraryManager.ItemRemoved += OnLibraryManagerItemRemoved;
 
             var pathsToWatch = new List<string>();
@@ -136,7 +132,7 @@ namespace Emby.Server.Implementations.IO
             var paths = _libraryManager
                 .RootFolder
                 .Children
-                .Where(IsLibraryMonitorEnabled)
+                .Where(item => IsMonitoringEnabled(item, _libraryManager.GetLibraryOptions(item)))
                 .OfType<Folder>()
                 .SelectMany(f => f.PhysicalLocations)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -155,14 +151,8 @@ namespace Emby.Server.Implementations.IO
             {
                 StartWatchingPath(path);
             }
-        }
 
-        private void StartWatching(BaseItem item)
-        {
-            if (IsLibraryMonitorEnabled(item))
-            {
-                StartWatchingPath(item.Path);
-            }
+            IsRunning = true;
         }
 
         /// <summary>
@@ -175,19 +165,6 @@ namespace Emby.Server.Implementations.IO
             if (e.Parent is AggregateFolder)
             {
                 StopWatchingPath(e.Item.Path);
-            }
-        }
-
-        /// <summary>
-        /// Handles the ItemAdded event of the LibraryManager control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryManagerItemAdded(object sender, ItemChangedEventArgs e)
-        {
-            if (e.Parent is AggregateFolder)
-            {
-                StartWatching(e.Item);
             }
         }
 
@@ -217,11 +194,8 @@ namespace Emby.Server.Implementations.IO
             });
         }
 
-        /// <summary>
-        /// Starts the watching path.
-        /// </summary>
-        /// <param name="path">The path.</param>
-        private void StartWatchingPath(string path)
+        /// <inheritdoc />
+        public void StartWatchingPath(string path)
         {
             if (!Directory.Exists(path))
             {
@@ -280,7 +254,7 @@ namespace Emby.Server.Implementations.IO
         /// Stops the watching path.
         /// </summary>
         /// <param name="path">The path.</param>
-        private void StopWatchingPath(string path)
+        public void StopWatchingPath(string path)
         {
             if (_fileSystemWatchers.TryGetValue(path, out var watcher))
             {
@@ -460,7 +434,6 @@ namespace Emby.Server.Implementations.IO
         /// </summary>
         public void Stop()
         {
-            _libraryManager.ItemAdded -= OnLibraryManagerItemAdded;
             _libraryManager.ItemRemoved -= OnLibraryManagerItemRemoved;
 
             foreach (var watcher in _fileSystemWatchers.Values.ToList())
@@ -470,6 +443,8 @@ namespace Emby.Server.Implementations.IO
 
             _fileSystemWatchers.Clear();
             DisposeRefreshers();
+
+            IsRunning = false;
         }
 
         private void DisposeRefresher(FileRefresher refresher)

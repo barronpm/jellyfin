@@ -17,6 +17,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Emby.Server.Implementations.IO
 {
+    /// <summary>
+    /// Manages the monitoring of library files.
+    /// </summary>
     public class LibraryMonitor : ILibraryMonitor
     {
         private readonly ILogger<LibraryMonitor> _logger;
@@ -39,59 +42,15 @@ namespace Emby.Server.Implementations.IO
         /// </summary>
         private readonly ConcurrentDictionary<string, string> _tempIgnoredPaths = new (StringComparer.OrdinalIgnoreCase);
 
-        private bool _disposed = false;
+        private bool _disposed;
 
         /// <summary>
-        /// Add the path to our temporary ignore list.  Use when writing to a path within our listening scope.
+        /// Initializes a new instance of the <see cref="LibraryMonitor"/> class.
         /// </summary>
-        /// <param name="path">The path.</param>
-        private void TemporarilyIgnore(string path)
-        {
-            _tempIgnoredPaths[path] = path;
-        }
-
-        /// <inheritdoc />
-        public void ReportFileSystemChangeBeginning(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-            {
-                throw new ArgumentNullException(nameof(path));
-            }
-
-            TemporarilyIgnore(path);
-        }
-
-        /// <inheritdoc />
-        public async void ReportFileSystemChangeComplete(string path, bool refreshPath)
-        {
-            if (string.IsNullOrEmpty(path))
-            {
-                throw new ArgumentNullException(nameof(path));
-            }
-
-            // This is an arbitrary amount of time, but delay it because file system writes often trigger events long after the file was actually written to.
-            // Seeing long delays in some situations, especially over the network, sometimes up to 45 seconds
-            // But if we make this delay too high, we risk missing legitimate changes, such as user adding a new file, or hand-editing metadata
-            await Task.Delay(45000).ConfigureAwait(false);
-
-            _tempIgnoredPaths.TryRemove(path, out var val);
-
-            if (refreshPath)
-            {
-                try
-                {
-                    ReportFileSystemChanged(path);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in ReportFileSystemChanged for {Path}", path);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="LibraryMonitor" /> class.
-        /// </summary>
+        /// <param name="logger">The logger.</param>
+        /// <param name="libraryManager">The library manager.</param>
+        /// <param name="configurationManager">The configuration manager.</param>
+        /// <param name="fileSystem">The file system.</param>
         public LibraryMonitor(
             ILogger<LibraryMonitor> logger,
             ILibraryManager libraryManager,
@@ -123,6 +82,7 @@ namespace Emby.Server.Implementations.IO
             return false;
         }
 
+        /// <inheritdoc />
         public void Start()
         {
             _libraryManager.ItemRemoved += OnLibraryManagerItemRemoved;
@@ -153,6 +113,46 @@ namespace Emby.Server.Implementations.IO
             }
 
             IsRunning = true;
+        }
+
+        /// <inheritdoc />
+        public void ReportFileSystemChangeBeginning(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+            // Ignore changes until the filesystem change is complete.
+            _tempIgnoredPaths[path] = path;
+        }
+
+        /// <inheritdoc />
+        public async void ReportFileSystemChangeComplete(string path, bool refreshPath)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+            // This is an arbitrary amount of time, but delay it because file system writes often trigger events long after the file was actually written to.
+            // Seeing long delays in some situations, especially over the network, sometimes up to 45 seconds
+            // But if we make this delay too high, we risk missing legitimate changes, such as user adding a new file, or hand-editing metadata
+            await Task.Delay(45000).ConfigureAwait(false);
+
+            _tempIgnoredPaths.TryRemove(path, out _);
+
+            if (refreshPath)
+            {
+                try
+                {
+                    ReportFileSystemChanged(path);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in ReportFileSystemChanged for {Path}", path);
+                }
+            }
         }
 
         /// <summary>
@@ -236,7 +236,7 @@ namespace Emby.Server.Implementations.IO
                     if (_fileSystemWatchers.TryAdd(path, newWatcher))
                     {
                         newWatcher.EnableRaisingEvents = true;
-                        _logger.LogInformation("Watching directory " + path);
+                        _logger.LogInformation("Watching directory {Path}", path);
                     }
                     else
                     {
@@ -245,7 +245,7 @@ namespace Emby.Server.Implementations.IO
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error watching path: {path}", path);
+                    _logger.LogError(ex, "Error watching path: {Path}", path);
                 }
             });
         }
@@ -286,18 +286,9 @@ namespace Emby.Server.Implementations.IO
             {
                 if (removeFromList)
                 {
-                    RemoveWatcherFromList(watcher);
+                    _fileSystemWatchers.TryRemove(watcher.Path, out _);
                 }
             }
-        }
-
-        /// <summary>
-        /// Removes the watcher from list.
-        /// </summary>
-        /// <param name="watcher">The watcher.</param>
-        private void RemoveWatcherFromList(FileSystemWatcher watcher)
-        {
-            _fileSystemWatchers.TryRemove(watcher.Path, out _);
         }
 
         /// <summary>
@@ -332,6 +323,7 @@ namespace Emby.Server.Implementations.IO
             }
         }
 
+        /// <inheritdoc />
         public void ReportFileSystemChanged(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -418,12 +410,12 @@ namespace Emby.Server.Implementations.IO
                 }
 
                 var newRefresher = new FileRefresher(path, _configurationManager, _libraryManager, _logger);
-                newRefresher.Completed += NewRefresher_Completed;
+                newRefresher.Completed += OnFileRefresherCompleted;
                 _activeRefreshers.Add(newRefresher);
             }
         }
 
-        private void NewRefresher_Completed(object sender, EventArgs e)
+        private void OnFileRefresherCompleted(object sender, EventArgs e)
         {
             var refresher = (FileRefresher)sender;
             DisposeRefresher(refresher);

@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Emby.Server.Implementations.Library;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
-using MediaBrowser.Controller.Events.Library;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.IO;
@@ -85,8 +84,6 @@ namespace Emby.Server.Implementations.IO
         /// <inheritdoc />
         public void Start()
         {
-            _libraryManager.ItemRemoved += OnLibraryManagerItemRemoved;
-
             var pathsToWatch = new List<string>();
 
             var paths = _libraryManager
@@ -152,19 +149,6 @@ namespace Emby.Server.Implementations.IO
                 {
                     _logger.LogError(ex, "Error in ReportFileSystemChanged for {Path}", path);
                 }
-            }
-        }
-
-        /// <summary>
-        /// Handles the ItemRemoved event of the LibraryManager control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="ItemChangedEventArgs"/> instance containing the event data.</param>
-        private void OnLibraryManagerItemRemoved(object sender, ItemChangedEventArgs e)
-        {
-            if (e.Parent is AggregateFolder)
-            {
-                StopWatchingPath(e.Item.Path);
             }
         }
 
@@ -250,10 +234,7 @@ namespace Emby.Server.Implementations.IO
             });
         }
 
-        /// <summary>
-        /// Stops the watching path.
-        /// </summary>
-        /// <param name="path">The path.</param>
+        /// <inheritdoc />
         public void StopWatchingPath(string path)
         {
             if (_fileSystemWatchers.TryGetValue(path, out var watcher))
@@ -426,8 +407,6 @@ namespace Emby.Server.Implementations.IO
         /// </summary>
         public void Stop()
         {
-            _libraryManager.ItemRemoved -= OnLibraryManagerItemRemoved;
-
             foreach (var watcher in _fileSystemWatchers.Values.ToList())
             {
                 DisposeWatcher(watcher, false);

@@ -232,16 +232,6 @@ namespace MediaBrowser.Controller.Library
         bool IsScanRunning { get; }
 
         /// <summary>
-        /// Occurs when [item updated].
-        /// </summary>
-        event EventHandler<ItemChangedEventArgs> ItemUpdated;
-
-        /// <summary>
-        /// Occurs when [item removed].
-        /// </summary>
-        event EventHandler<ItemChangedEventArgs> ItemRemoved;
-
-        /// <summary>
         /// Finds the type of the collection.
         /// </summary>
         /// <param name="item">The item.</param>

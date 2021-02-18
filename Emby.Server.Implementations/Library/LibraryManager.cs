@@ -155,16 +155,6 @@ namespace Emby.Server.Implementations.Library
         }
 
         /// <summary>
-        /// Occurs when [item updated].
-        /// </summary>
-        public event EventHandler<ItemChangedEventArgs> ItemUpdated;
-
-        /// <summary>
-        /// Occurs when [item removed].
-        /// </summary>
-        public event EventHandler<ItemChangedEventArgs> ItemRemoved;
-
-        /// <summary>
         /// Gets the root folder.
         /// </summary>
         /// <value>The root folder.</value>
@@ -450,7 +440,12 @@ namespace Emby.Server.Implementations.Library
 
             _memoryCache.Remove(item.Id);
 
-            ReportItemRemoved(item, parent);
+            // TODO: Convert method to async
+            _eventBus.Send(new ItemRemovedEventArgs
+            {
+                Item = item,
+                Parent = parent
+            }).GetAwaiter().GetResult();
         }
 
         private static IEnumerable<string> GetMetadataPaths(BaseItem item, IEnumerable<BaseItem> children)
@@ -1818,7 +1813,8 @@ namespace Emby.Server.Implementations.Library
         /// <param name="parent">The parent item.</param>
         public void CreateItem(BaseItem item, BaseItem parent)
         {
-            CreateItems(new[] { item }, parent, CancellationToken.None);
+            // TODO: Make method async.
+            CreateItems(new[] { item }, parent, CancellationToken.None).GetAwaiter().GetResult();
         }
 
         /// <inheritdoc />
@@ -1956,32 +1952,20 @@ namespace Emby.Server.Implementations.Library
 
             _itemRepository.SaveItems(items, cancellationToken);
 
-            if (ItemUpdated != null)
+            foreach (var item in items)
             {
-                foreach (var item in items)
+                // With the live tv guide this just creates too much noise
+                if (item.SourceType != SourceType.Library)
                 {
-                    // With the live tv guide this just creates too much noise
-                    if (item.SourceType != SourceType.Library)
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        ItemUpdated(
-                            this,
-                            new ItemChangedEventArgs
-                            {
-                                Item = item,
-                                Parent = parent,
-                                UpdateReason = updateReason
-                            });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error in ItemUpdated event handler");
-                    }
+                    continue;
                 }
+
+                await _eventBus.Send(new ItemChangedEventArgs
+                {
+                    Item = item,
+                    Parent = parent,
+                    UpdateReason = updateReason
+                }).ConfigureAwait(false);
             }
         }
 
@@ -1999,32 +1983,6 @@ namespace Emby.Server.Implementations.Library
             item.DateLastSaved = DateTime.UtcNow;
 
             return UpdateImagesAsync(item, updateReason >= ItemUpdateType.ImageUpdate);
-        }
-
-        /// <summary>
-        /// Reports the item removed.
-        /// </summary>
-        /// <param name="item">The item.</param>
-        /// <param name="parent">The parent item.</param>
-        public void ReportItemRemoved(BaseItem item, BaseItem parent)
-        {
-            if (ItemRemoved != null)
-            {
-                try
-                {
-                    ItemRemoved(
-                        this,
-                        new ItemChangedEventArgs
-                        {
-                            Item = item,
-                            Parent = parent
-                        });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in ItemRemoved event handler");
-                }
-            }
         }
 
         /// <summary>

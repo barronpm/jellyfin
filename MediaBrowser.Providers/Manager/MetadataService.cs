@@ -273,7 +273,7 @@ namespace MediaBrowser.Providers.Manager
                 }
             }
 
-            LibraryManager.CreateItems(personsToSave, null, CancellationToken.None);
+            await LibraryManager.CreateItems(personsToSave, null, CancellationToken.None).ConfigureAwait(false);
         }
 
         protected virtual Task AfterMetadataRefresh(TItemType item, MetadataRefreshOptions refreshOptions, CancellationToken cancellationToken)

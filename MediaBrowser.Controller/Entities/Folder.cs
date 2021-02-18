@@ -382,7 +382,7 @@ namespace MediaBrowser.Controller.Entities
                         }
                     }
 
-                    LibraryManager.CreateItems(newItems, this, cancellationToken);
+                    await LibraryManager.CreateItems(newItems, this, cancellationToken);
                 }
             }
             else

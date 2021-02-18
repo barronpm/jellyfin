@@ -9,7 +9,7 @@ namespace Emby.Server.Implementations.IO
     /// <summary>
     /// A class that handles the monitoring of updated items.
     /// </summary>
-    public class LibraryMonitorEventHandlers : IHandleMessages<ItemAddedEventArgs>
+    public class LibraryMonitorEventHandlers : IHandleMessages<ItemAddedEventArgs>, IHandleMessages<ItemRemovedEventArgs>
     {
         private readonly ILibraryManager _libraryManager;
         private readonly ILibraryMonitor _libraryMonitor;
@@ -36,6 +36,17 @@ namespace Emby.Server.Implementations.IO
             if (_libraryMonitor.IsMonitoringEnabled(message.Item, _libraryManager.GetLibraryOptions(message.Item)))
             {
                 _libraryMonitor.StartWatchingPath(message.Item.Path);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc />
+        public Task Handle(ItemRemovedEventArgs message)
+        {
+            if (_libraryMonitor.IsRunning && message.Parent is AggregateFolder)
+            {
+                _libraryMonitor.StopWatchingPath(message.Item.Path);
             }
 
             return Task.CompletedTask;

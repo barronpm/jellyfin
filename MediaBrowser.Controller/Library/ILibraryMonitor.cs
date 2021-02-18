@@ -55,5 +55,11 @@ namespace MediaBrowser.Controller.Library
         /// </summary>
         /// <param name="path">The path.</param>
         void StartWatchingPath(string path);
+
+        /// <summary>
+        /// Stops the watching path.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        void StopWatchingPath(string path);
     }
 }

@@ -4,6 +4,7 @@ using MediaBrowser.Controller.Events.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rebus.Config;
+using Rebus.Persistence.InMem;
 using Rebus.Routing.TypeBased;
 using Rebus.ServiceProvider;
 using Rebus.Transport.InMem;
@@ -33,7 +34,8 @@ namespace Jellyfin.Server.Implementations.Events
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "Events"))
                 .Routing(r => r.TypeBased()
                     .MapAssemblyOf<AuthenticationSucceededEventArgs>("Events")
-                    .MapFallback("Events")));
+                    .MapFallback("Events"))
+                .Sagas(s => s.StoreInMemory()));
         }
     }
 }
